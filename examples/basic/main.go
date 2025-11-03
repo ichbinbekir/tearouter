@@ -73,6 +73,10 @@ func model() tea.Model {
 				Builder: func() tea.Model { return Model2{number: rand.Int()} },
 			},
 		},
+		Middleware: func(targetPath string) (newPath string) {
+			// Don't do anything
+			return ""
+		},
 	}
 }
 

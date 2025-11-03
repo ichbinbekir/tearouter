@@ -1,6 +1,8 @@
 package tearouter
 
 import (
+	"errors"
+
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -18,9 +20,19 @@ type RedirectMsg struct {
 	Target string
 }
 
+type ErrorMsg struct {
+	Err error
+}
+
+func newErrorCmd(err error) tea.Cmd {
+	return func() tea.Msg {
+		return ErrorMsg{Err: err}
+	}
+}
+
 func Redirect(typ RedirectType, target ...string) tea.Cmd {
 	if typ != Pop && len(target) < 1 {
-		// TODO err
+		return newErrorCmd(errors.New("redirect target can't be empty"))
 	}
 	if typ == Pop {
 		return func() tea.Msg {
