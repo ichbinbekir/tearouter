@@ -1,7 +1,5 @@
 # TeaRouter
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/your-username/tearouter)](https://goreportcard.com/report/github.com/your-username/tearouter)
-
 **A powerful and simple router for Bubble Tea applications, inspired by GoRouter.**
 
 TeaRouter is designed to simplify page (model) management and navigation in complex applications developed with the `bubbletea` TUI framework. It brings the core principles of Flutter's `gorouter` package to the TUI world.
@@ -17,7 +15,7 @@ TeaRouter is designed to simplify page (model) management and navigation in comp
 ## Installation
 
 ```bash
-go get github.com/your-username/tearouter
+go get github.com/ichbinbekir/tearouter
 ```
 
 ## Quick Start
@@ -82,7 +80,7 @@ func (m SettingsPageModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func main() {
 	// Define routes
 
-outes := []tearouter.Route{
+	outes := []tearouter.Route{
 		{
 			Path:    "/",
 			Builder: func() tea.Model { return HomePageModel{} },
@@ -95,7 +93,7 @@ outes := []tearouter.Route{
 
 	// Create the router model
 
-outerModel := tearouter.Model{
+	outerModel := tearouter.Model{
 		InitialRoute: "/",
 		Routes:       routes,
 	}
@@ -143,31 +141,25 @@ If the middleware returns `""` (an empty string), navigation proceeds as normal.
 var isAuthenticated = false
 
 func authMiddleware(targetPath string) (newPath string) {
-    // Don't interfere with navigation to or from the login page
-    if targetPath == "/login" || !isAuthenticated {
-        return "" // Proceed
-    }
+	// Don't interfere with navigation to or from the login page
+	if targetPath == "/login" || !isAuthenticated {
+		return "" // Proceed
+	}
 
-    if !isAuthenticated {
-        // If the user is not logged in and tries to access a protected page,
-        // redirect them to the login page.
-        return "/login"
-    }
+	if !isAuthenticated {
+		// If the user is not logged in and tries to access a protected page,
+		// redirect them to the login page.
+		return "/login"
+	}
 
-    return "" // Logged in, proceed
+	return "" // Logged in, proceed
 }
 
 func main() {
-    routerModel := tearouter.Model{
-        // ...
-        Middleware: authMiddleware,
-    }
-    // ...
+	routerModel := tearouter.Model{
+		// ...
+		Middleware: authMiddleware,
+	}
+	// ...
 }
-```
-
-## License
-
-This project is under the MIT License. See the `LICENSE` file for details.
-
 ```
