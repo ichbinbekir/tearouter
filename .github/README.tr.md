@@ -1,7 +1,5 @@
 # TeaRouter
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/your-username/tearouter)](https://goreportcard.com/report/github.com/your-username/tearouter)
-
 **Bubble Tea uygulamaları için GoRouter'dan ilham alan güçlü ve basit bir yönlendirici.**
 
 TeaRouter, `bubbletea` TUI framework'ü ile geliştirilen karmaşık uygulamalarda sayfa (model) yönetimini ve navigasyonu kolaylaştırmak için tasarlanmıştır. Flutter'daki `gorouter` paketinin temel prensiplerini TUI dünyasına taşır.
@@ -17,7 +15,7 @@ TeaRouter, `bubbletea` TUI framework'ü ile geliştirilen karmaşık uygulamalar
 ## Kurulum
 
 ```bash
-go get github.com/your-username/tearouter
+go get github.com/ichbinbekir/tearouter
 ```
 
 ## Hızlı Başlangıç
@@ -146,29 +144,25 @@ Eğer middleware `""` (boş string) dönerse, navigasyon normal şekilde devam e
 var isAuthenticated = false
 
 func authMiddleware(targetPath string) (newPath string) {
-    // Login sayfasına veya login sayfasından yapılan yönlendirmelere dokunma
-    if targetPath == "/login" || !isAuthenticated {
-        return "" // Devam et
-    }
+	// Login sayfasına veya login sayfasından yapılan yönlendirmelere dokunma
+	if targetPath == "/login" || !isAuthenticated {
+		return "" // Devam et
+	}
 
-    if !isAuthenticated {
-        // Eğer kullanıcı giriş yapmamışsa ve korumalı bir sayfaya gitmeye çalışıyorsa
-        // onu login sayfasına yönlendir.
-        return "/login"
-    }
+	if !isAuthenticated {
+		// Eğer kullanıcı giriş yapmamışsa ve korumalı bir sayfaya gitmeye çalışıyorsa
+		// onu login sayfasına yönlendir.
+		return "/login"
+	}
 
-    return "" // Giriş yapmış, devam et
+	return "" // Giriş yapmış, devam et
 }
 
 func main() {
-    routerModel := tearouter.Model{
-        // ...
-        Middleware: authMiddleware,
-    }
-    // ...
+	routerModel := tearouter.Model{
+		// ...
+		Middleware: authMiddleware,
+	}
+	// ...
 }
 ```
-
-## Lisans
-
-Bu proje MIT Lisansı altındadır. Detaylar için `LICENSE` dosyasına bakınız.
