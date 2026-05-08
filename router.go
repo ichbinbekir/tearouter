@@ -19,6 +19,7 @@ type Model struct {
 	Routes       []Route
 	Middleware   Middleware
 	modelStack   []tea.Model
+	lastSize     tea.WindowSizeMsg
 }
 
 func (m Model) Init() tea.Cmd {
@@ -27,7 +28,11 @@ func (m Model) Init() tea.Cmd {
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
-	if msg, ok := msg.(RedirectMsg); ok {
+
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.lastSize = msg
+	case RedirectMsg:
 		if m.Middleware != nil && msg.Type != Pop {
 			newTarget := m.Middleware(msg.Target)
 			if newTarget != "" {
@@ -73,7 +78,7 @@ func (m *Model) gox(target string) tea.Cmd {
 		if route.Path == target {
 			newModel := route.Builder()
 			m.modelStack = []tea.Model{newModel}
-			return newModel.Init()
+			return m.initModel(len(m.modelStack) - 1)
 		}
 	}
 	return newErrorCmd(fmt.Errorf("route not found: %s", target))
@@ -84,7 +89,7 @@ func (m *Model) push(target string) tea.Cmd {
 		if route.Path == target {
 			newModel := route.Builder()
 			m.modelStack = append(m.modelStack, newModel)
-			return newModel.Init()
+			return m.initModel(len(m.modelStack) - 1)
 		}
 	}
 	return newErrorCmd(fmt.Errorf("route not found: %s", target))
@@ -98,7 +103,7 @@ func (m *Model) replace(target string) tea.Cmd {
 		if route.Path == target {
 			newModel := route.Builder()
 			m.modelStack[len(m.modelStack)-1] = newModel
-			return newModel.Init()
+			return m.initModel(len(m.modelStack) - 1)
 		}
 	}
 	return newErrorCmd(fmt.Errorf("route not found: %s", target))
@@ -107,9 +112,21 @@ func (m *Model) replace(target string) tea.Cmd {
 func (m *Model) pop() tea.Cmd {
 	if length := len(m.modelStack); length > 1 {
 		m.modelStack = m.modelStack[:length-1]
-		return nil
+		return m.initModel(len(m.modelStack) - 1)
 	}
 	return newErrorCmd(errors.New("cannot pop from the root of the stack"))
+}
+
+func (m *Model) initModel(index int) tea.Cmd {
+	cmds := []tea.Cmd{m.modelStack[index].Init()}
+	if m.lastSize.Width > 0 || m.lastSize.Height > 0 {
+		var cmd tea.Cmd
+		m.modelStack[index], cmd = m.modelStack[index].Update(m.lastSize)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	}
+	return tea.Batch(cmds...)
 }
 
 func (m *Model) routeInitial() tea.Cmd {
