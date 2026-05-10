@@ -6,6 +6,7 @@ TeaRouter, `bubbletea` TUI framework'ü ile geliştirilen karmaşık uygulamalar
 
 ## Özellikler
 
+- **Hiyerarşik Alt Rotalar**: İç içe geçmiş rotalar tanımlayın ve navigasyon yığınını (stack) otomatik oluşturun.
 - **Yığın Tabanlı Navigasyon**: `Push` ve `Pop` operasyonları ile sayfalar arasında kolayca geçiş yapın.
 - **Bildirimsel Yönlendirme**: Rotalarınızı temiz ve okunabilir bir şekilde tanımlayın.
 - **Durumu Sıfırlayarak Yönlendirme**: `Go` metodu ile navigasyon geçmişini temizleyerek yeni bir sayfaya gidin.
@@ -18,9 +19,40 @@ TeaRouter, `bubbletea` TUI framework'ü ile geliştirilen karmaşık uygulamalar
 go get github.com/ichbinbekir/tearouter
 ```
 
+## Hiyerarşik Alt Rotalar (Sub-Routing)
+
+**GoRouter**'dan ilham alan TeaRouter, hiyerarşik rota tanımlarını destekler. `/main/settings/profile` gibi derin bir yola gittiğinizde, TeaRouter otomatik olarak tüm üst modelleri yığına ekler. Bu sayede doğal bir `Pop` davranışı (Profil -> Ayarlar -> Ana Sayfa) sağlanır.
+
+```go
+routes := []tearouter.Route{
+    {
+        Path: "/main",
+        Builder: func() tea.Model { return MainModel{} },
+        Children: []tearouter.Route{
+            {
+                Path: "settings", // Göreli yol: /main/settings
+                Builder: func() tea.Model { return SettingsModel{} },
+                Children: []tearouter.Route{
+                    {
+                        Path: "profile", // Göreli yol: /main/settings/profile
+                        Builder: func() tea.Model { return ProfileModel{} },
+                    },
+                },
+            },
+        },
+    },
+}
+```
+
+`tearouter.Redirect(tearouter.Go, "/main/settings/profile")` çağrıldığında:
+1. Yığın (stack) temizlenir.
+2. `MainModel`, `SettingsModel` ve `ProfileModel` sırasıyla oluşturulup yığına eklenir.
+3. Kullanıcı `ProfileModel` ekranını görür.
+4. `Pop` yapıldığında kullanıcı doğal olarak `SettingsModel` ekranına geri döner.
+
 ## Hızlı Başlangıç
 
-Aşağıda, iki sayfa (`home` ve `settings`) arasında geçiş yapan temel bir `tearouter` kullanımı gösterilmiştir.
+Aşağıda, sayfalar arasında geçiş yapan temel bir `tearouter` kullanımı gösterilmiştir.
 
 ```go
 package main
@@ -30,80 +62,47 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/your-username/tearouter"
+	"github.com/ichbinbekir/tearouter"
 )
 
 // --- Sayfa Modellerimiz ---
 
-// HomePageModel
 type HomePageModel struct{}
-
 func (m HomePageModel) Init() tea.Cmd { return nil }
-func (m HomePageModel) View() string {
-	return "Ana Sayfa
-
-'s' tuşuna basarak ayarlar sayfasına git.
-'q' ile çıkış yap."
-}
+func (m HomePageModel) View() string { return "Ana Sayfa\n\nAyarlar için 's', çıkış için 'q' basın." }
 func (m HomePageModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	if msg, ok := msg.(tea.KeyMsg); ok {
 		switch msg.String() {
-		case "s":
-			// Ayarlar sayfasını yığının üzerine ekle
-			return m, tearouter.Redirect(tearouter.Push, "/settings")
-		case "q", "ctrl+c":
-			return m, tea.Quit
+		case "s": return m, tearouter.Redirect(tearouter.Push, "/settings")
+		case "q": return m, tea.Quit
 		}
 	}
 	return m, nil
 }
 
-// SettingsPageModel
 type SettingsPageModel struct{}
-
 func (m SettingsPageModel) Init() tea.Cmd { return nil }
-func (m SettingsPageModel) View() string {
-	return "Ayarlar Sayfası
-
-'b' tuşuna basarak geri dön."
-}
+func (m SettingsPageModel) View() string { return "Ayarlar Sayfası\n\nGeri dönmek için 'b' basın." }
 func (m SettingsPageModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "b":
-			// Yığından bir önceki sayfaya dön
-			return m, tearouter.Redirect(tearouter.Pop)
-		}
+	if msg, ok := msg.(tea.KeyMsg); ok && msg.String() == "b" {
+		return m, tearouter.Redirect(tearouter.Pop)
 	}
 	return m, nil
 }
-
-// --- Ana Uygulama ---
 
 func main() {
-	// Rotaları tanımla
 	routes := []tearouter.Route{
-		{
-			Path:    "/",
-			Builder: func() tea.Model { return HomePageModel{} },
-		},
-		{
-			Path:    "/settings",
-			Builder: func() tea.Model { return SettingsPageModel{} },
-		},
+		{ Path: "/", Builder: func() tea.Model { return HomePageModel{} } },
+		{ Path: "/settings", Builder: func() tea.Model { return SettingsPageModel{} } },
 	}
 
-	// Router modelini oluştur
 	routerModel := tearouter.Model{
 		InitialRoute: "/",
 		Routes:       routes,
 	}
 
-	p := tea.NewProgram(routerModel)
-	if err := p.Start(); err != nil {
-		fmt.Printf("Bir hata oluştu: %v", err)
+	if _, err := tea.NewProgram(routerModel).Run(); err != nil {
+		fmt.Printf("Hata: %v", err)
 		os.Exit(1)
 	}
 }
@@ -113,56 +112,20 @@ func main() {
 
 Navigasyon, `tearouter.Redirect` komutu ile tetiklenir.
 
-- `tearouter.Go`: Navigasyon yığınını temizler ve belirtilen hedefe yönlendirir. Geri dönmek mümkün değildir. Genellikle login sonrası ana sayfaya yönlendirme gibi durumlar için kullanılır.
-  ```go
-  return m, tearouter.Redirect(tearouter.Go, "/home")
-  ```
-
-- `tearouter.Push`: Yeni bir sayfayı mevcut yığının üzerine ekler. Kullanıcı geri dönebilir.
-  ```go
-  return m, tearouter.Redirect(tearouter.Push, "/profile")
-  ```
-
-- `tearouter.Replace`: Yığındaki mevcut (en üstteki) sayfayı yenisiyle değiştirir. Yığının boyutu değişmez.
-  ```go
-  return m, tearouter.Redirect(tearouter.Replace, "/profile/edit")
-  ```
-
-- `tearouter.Pop`: Yığının en üstündeki sayfayı kaldırır ve bir önceki sayfaya döner. Eğer yığında tek bir sayfa varsa hata döner.
-  ```go
-  return m, tearouter.Redirect(tearouter.Pop)
-  ```
+- `tearouter.Go`: Hedef yolun tüm hiyerarşisini oluşturur ve yeni yığın olarak ayarlar.
+- `tearouter.Push`: Hedef yolun tüm hiyerarşisini mevcut yığının üzerine ekler.
+- `tearouter.Replace`: Mevcut yığını hedef yolun tam hiyerarşisiyle değiştirir.
+- `tearouter.Pop`: Yığının en üstündeki sayfayı kaldırır ve bir önceki sayfaya döner.
 
 ## Middleware Kullanımı
 
-Middleware, her yönlendirme talebini işleyen bir fonksiyondur. Loglama yapabilir veya kullanıcının yetkisi olmayan bir sayfaya gitmesini engelleyebilirsiniz.
-
-Eğer middleware `""` (boş string) dönerse, navigasyon normal şekilde devam eder. Eğer yeni bir path dönerse, kullanıcı o path'e yönlendirilir.
+Middleware, kimlik doğrulama gibi işlemler için navigasyon isteklerini yakalamanıza olanak tanır.
 
 ```go
-// Örnek: Auth Middleware
-var isAuthenticated = false
-
 func authMiddleware(targetPath string) (newPath string) {
-	// Login sayfasına veya login sayfasından yapılan yönlendirmelere dokunma
-	if targetPath == "/login" || !isAuthenticated {
-		return "" // Devam et
-	}
-
-	if !isAuthenticated {
-		// Eğer kullanıcı giriş yapmamışsa ve korumalı bir sayfaya gitmeye çalışıyorsa
-		// onu login sayfasına yönlendir.
+	if !isLoggedIn && targetPath != "/login" {
 		return "/login"
 	}
-
-	return "" // Giriş yapmış, devam et
-}
-
-func main() {
-	routerModel := tearouter.Model{
-		// ...
-		Middleware: authMiddleware,
-	}
-	// ...
+	return ""
 }
 ```
